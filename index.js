@@ -39,7 +39,7 @@ export default function (kibana) {
                     keepalive: Joi.boolean().default(true),
                 }).default(),
                 auth: Joi.object().keys({
-                    type: Joi.string().valid(['', 'basicauth', 'jwt', 'openid', 'saml', 'proxy', 'kerberos', 'proxycache']).default(''),
+                    type: Joi.string().valid(['', 'autodetect', 'basicauth', 'jwt', 'openid', 'saml', 'proxy', 'kerberos', 'proxycache']).default(''),
                     anonymous_auth_enabled: Joi.boolean().default(false),
                     unauthenticated_routes: Joi.array().default(["/api/status"]),
                     logout_url: Joi.string().allow('').default(''),
@@ -147,7 +147,8 @@ export default function (kibana) {
                 'plugins/opendistro_security/customizations/enable_customizations.js'
             ],
             replaceInjectedVars: async function(originalInjectedVars, request, server) {
-                const authType = server.config().get('opendistro_security.auth.type');
+                let authType = server.config().get('opendistro_security.auth.type');
+                authType = "basicauth";
                 // Make sure securityDynamic is always available to the frontend, no matter what
                 // Remember that these values are only updated on page load.
                 let securityDynamic = {};
@@ -181,8 +182,6 @@ export default function (kibana) {
                     // If there's an error, it's probably because x-pack security is enabled.
                 }
 
-
-
                 if(server.config().get('opendistro_security.multitenancy.enabled')) {
                     let currentTenantName = 'global';
                     let currentTenant = '';
@@ -205,7 +204,7 @@ export default function (kibana) {
                         currentTenant: currentTenant
                     };
                 }
-		
+
 		// @todo Is there a way to access this synchronously,
                 // so that we can move this setting back to injectDefaulVars?
                 const legacyEsConfig = await server.newPlatform.setup.core.elasticsearch.legacy.config$.pipe(first()).toPromise();
@@ -352,7 +351,7 @@ export default function (kibana) {
             server.state('security_storage', storageCookieConf);
 
 
-            if (authType && authType !== '' && ['basicauth', 'jwt', 'openid', 'saml', 'proxycache'].indexOf(authType) > -1) {
+            if (authType && authType !== '' && ['autodetect', 'basicauth', 'jwt', 'openid', 'saml', 'proxycache'].indexOf(authType) > -1) {
                 try {
                     await server.register({
                         plugin: require('hapi-auth-cookie')
@@ -384,6 +383,14 @@ export default function (kibana) {
                     } else if (authType == 'proxycache') {
                         let ProxyCache = require('./lib/auth/types/proxycache/ProxyCache');
                         authClass = new ProxyCache(pluginRoot, server, this, APP_ROOT, API_ROOT, legacyEsConfig);
+                    } else if (authType == 'autodetect') {
+                        let Autodetect = require('./lib/auth/types/autodetect/Autodetect');
+                        authClass = new Autodetect(pluginRoot, server, this, APP_ROOT, API_ROOT, legacyEsConfig);
+                        await authClass.setup(server)
+                                       .then()
+                                       .catch(error => {
+                                         authClass.setupChildClass(error, pluginRoot, server, this, APP_ROOT, API_ROOT, legacyEsConfig);
+                                       });
                     }
 
                     if (authClass) {
