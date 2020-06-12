@@ -147,8 +147,10 @@ export default function (kibana) {
                 'plugins/opendistro_security/customizations/enable_customizations.js'
             ],
             replaceInjectedVars: async function(originalInjectedVars, request, server) {
+                server.log(["error", "server"], "replaceInjectedVars");
+                server.log(["error", "server"], "originalInjectedVars: "+JSON.stringify(originalInjectedVars));
                 let authType = server.config().get('opendistro_security.auth.type');
-                authType = "basicauth";
+                
                 // Make sure securityDynamic is always available to the frontend, no matter what
                 // Remember that these values are only updated on page load.
                 let securityDynamic = {};
