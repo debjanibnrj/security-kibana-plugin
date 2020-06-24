@@ -41,12 +41,12 @@ export default function (kibana) {
                 auth: Joi.object().keys({
                     type: Joi.string().valid(['', 'autodetect', 'basicauth', 'jwt', 'openid', 'saml', 'proxy', 'kerberos', 'proxycache']).default(''),
                     anonymous_auth_enabled: Joi.boolean().default(false),
-                    unauthenticated_routes: Joi.array().default(["/api/status"]),
+                    unauthenticated_routes: Joi.array().default(["/api/status", "/api/authtype"]),
                     logout_url: Joi.string().allow('').default(''),
                 }).default(),
                 basicauth: Joi.object().keys({
                     enabled: Joi.boolean().default(true),
-                    unauthenticated_routes: Joi.array().default(["/api/status"]),
+                    unauthenticated_routes: Joi.array().default(["/api/status", "/api/authtype"]),
                     forbidden_usernames: Joi.array().default([]),
                     header_trumps_session: Joi.boolean().default(false),
                     alternative_login: Joi.object().keys({
@@ -150,7 +150,7 @@ export default function (kibana) {
                 server.log(["error", "server"], "replaceInjectedVars");
                 server.log(["error", "server"], "originalInjectedVars: "+JSON.stringify(originalInjectedVars));
                 let authType = server.config().get('opendistro_security.auth.type');
-                
+
                 // Make sure securityDynamic is always available to the frontend, no matter what
                 // Remember that these values are only updated on page load.
                 let securityDynamic = {};
